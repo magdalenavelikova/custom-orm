@@ -1,6 +1,6 @@
-package orm;
+package ormFramework.core;
 
-import orm.annotations.Entity;
+import ormFramework.annotations.Entity;
 
 import java.io.File;
 import java.net.URISyntaxException;
@@ -12,20 +12,20 @@ public class EntityScanner {
 
     public EntityScanner(Class<?> mainClass) throws URISyntaxException, ClassNotFoundException {
         String path = mainClass.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
-        //String packageName = mainClass.getPackageName();
-        File root = new File(path);
+        String packageName = mainClass.getPackageName();
+        File root = new File(path + packageName.replace(".", "/"));
         classes = new ArrayList<>();
-        scanEntities(root);
-        System.out.println();
+        scanEntities(root, packageName);
+
     }
-    private void scanEntities(File dir) throws ClassNotFoundException {
+
+    private void scanEntities(File dir, String packageName) throws ClassNotFoundException {
         for (File file : dir.listFiles()) {
             if (file.isDirectory()) {
-                scanEntities(file);
+                scanEntities(file, packageName + "." + file.getName());
             } else if (file.getName().endsWith(".class")) {
-                System.out.println(file.getName());
-                System.out.println(file.getPath());
-                Class<?> classInfo = Class.forName(file.getName().replace(".class", "").trim());
+
+                Class<?> classInfo = Class.forName(packageName + "." + file.getName().replace(".class", ""));
                 if (classInfo.isAnnotationPresent(Entity.class)) {
                     this.classes.add(classInfo);
                 }

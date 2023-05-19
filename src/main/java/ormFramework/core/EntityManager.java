@@ -1,9 +1,9 @@
-package orm;
+package ormFramework.core;
 
-import exceptions.ORMException;
-import orm.annotations.Column;
-import orm.annotations.Entity;
-import orm.annotations.Id;
+import customOrm.exceptions.ORMException;
+import ormFramework.annotations.Column;
+import ormFramework.annotations.Entity;
+import ormFramework.annotations.Id;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -16,15 +16,46 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class EntityManager<E> implements DBContext<E> {
+public class EntityManager implements DBContext {
     private final Connection connection;
+    private EntityScanner entityScanner;
 
-    public EntityManager(Connection connection) {
+    public EntityManager(Connection connection, EntityScanner entityScanner) {
         this.connection = connection;
+        this.entityScanner = entityScanner;
+
     }
 
     @Override
-    public boolean persist(E entity) throws SQLException, IllegalAccessException {
+    public boolean create() throws SQLException {
+        List<Class<?>> classes = entityScanner.getClasses();
+        for (Class<?> classInfo : classes) {
+            Entity entityInfo = (Entity) classInfo.getAnnotation(Entity.class);
+            String tableName = entityInfo.name();
+            String sql = String.format("CREATE TABLE IF NOT EXISTS %s%n(", tableName);
+            String pkDefinitions = "";
+            for (Field field : classInfo.getDeclaredFields()) {
+                if (!field.isAnnotationPresent(Column.class) && !field.isAnnotationPresent(Id.class)) {
+                    continue;
+                }
+                String columnInfo = getColumnInfo(field);
+                if (columnInfo.startsWith("id")) {
+                    sql += columnInfo + ", \n";
+                    pkDefinitions = "\n CONSTRAINT " + tableName + "_pk PRIMARY KEY (id));";
+                } else {
+                    sql += columnInfo + ", ";
+                }
+            }
+            sql += pkDefinitions + "\n";
+
+            connection.createStatement().execute(sql);
+        }
+        return false;
+    }
+
+
+    @Override
+    public <E> boolean persist(E entity) throws SQLException, IllegalAccessException {
 
         String tableName = this.getTableName(entity.getClass());
         String fieldList = this.getFieldList(entity);
@@ -37,14 +68,14 @@ public class EntityManager<E> implements DBContext<E> {
 
 
     @Override
-    public Iterable<E> find(Class<E> table) throws SQLException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
+    public <E> Iterable<E> find(Class<E> table) throws SQLException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
 
 
         return find(table, "");
     }
 
     @Override
-    public Iterable<E> find(Class<E> table, String where) throws SQLException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
+    public <E> Iterable<E> find(Class<E> table, String where) throws SQLException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
 
         String tableName = this.getTableName(table);
         String sql = String.format("SELECT * FROM %s %s;", tableName, where.equals("") ? "" : "WHERE " + where);
@@ -62,13 +93,13 @@ public class EntityManager<E> implements DBContext<E> {
     }
 
     @Override
-    public E findFirst(Class<E> table) throws SQLException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
+    public <E> E findFirst(Class<E> table) throws SQLException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
         return findFirst(table, "");
 
     }
 
     @Override
-    public E findFirst(Class<E> table, String where) throws SQLException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
+    public <E> E findFirst(Class<E> table, String where) throws SQLException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
         String tableName = this.getTableName(table);
         String sql = String.format("SELECT * FROM %s %s LIMIT 1", tableName, where.equals("") ? "" : "WHERE " + where);
         ResultSet resultSet = this.connection.prepareStatement(sql).executeQuery();
@@ -78,25 +109,40 @@ public class EntityManager<E> implements DBContext<E> {
 
     }
 
-    private E createEntity(Class<E> table, ResultSet resultSet) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException, SQLException {
+    private <E> E createEntity(Class<E> table, ResultSet resultSet) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException, SQLException {
         if (!resultSet.next()) {
             return null;
         }
         E entity = table.getDeclaredConstructor().newInstance();
         for (Field declaredField : table.getDeclaredFields()) {
-
             if (!declaredField.isAnnotationPresent(Column.class) && !declaredField.isAnnotationPresent(Id.class)) {
                 continue;
             }
-            Column columnAnnotation = declaredField.getAnnotation(Column.class);
-            String fieldName = columnAnnotation == null ? declaredField.getName() : columnAnnotation.name();
+            String fieldName = getColumnName(declaredField);
             String value = resultSet.getString(fieldName);
+
             entity = this.fillData(entity, declaredField, value);
         }
         return entity;
     }
 
-    private E fillData(E entity, Field declaredField, String value) throws SQLException, IllegalAccessException {
+    private String getColumnInfo(Field declaredField) {
+
+        Column columnAnnotation = declaredField.getAnnotation(Column.class);
+        String fieldName = columnAnnotation == null ? declaredField.getName() : columnAnnotation.name();
+        String fieldDefinition = columnAnnotation == null ? "INT AUTO_INCREMENT" : columnAnnotation.columnDefinition();
+        return fieldName + " " + fieldDefinition;
+    }
+
+    private String getColumnName(Field declaredField) {
+
+        Column columnAnnotation = declaredField.getAnnotation(Column.class);
+        String fieldName = columnAnnotation == null ? declaredField.getName() : columnAnnotation.name();
+
+        return fieldName;
+    }
+
+    private <E> E fillData(E entity, Field declaredField, String value) throws SQLException, IllegalAccessException {
         declaredField.setAccessible(true);
 
         if (declaredField.getType() == long.class || declaredField.getType() == Long.class) {
@@ -121,7 +167,7 @@ public class EntityManager<E> implements DBContext<E> {
         return annotation.name();
     }
 
-    private String getFieldList(E entity) {
+    private <E> String getFieldList(E entity) {
         String fieldList = Arrays.stream(entity.getClass().getDeclaredFields())
                 .filter(f -> f.getAnnotation(Column.class) != null)
                 .map(f -> f.getAnnotation(Column.class).name())
@@ -129,7 +175,7 @@ public class EntityManager<E> implements DBContext<E> {
         return fieldList;
     }
 
-    private String getValueList(E entity) throws IllegalAccessException {
+    private <E> String getValueList(E entity) throws IllegalAccessException {
         List<Field> fields = Arrays.stream(entity.getClass().getDeclaredFields())
                 .filter(f -> f.getAnnotation(Column.class) != null).collect(Collectors.toList());
 

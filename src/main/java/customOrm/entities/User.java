@@ -1,8 +1,8 @@
-package entities;
+package customOrm.entities;
 
-import orm.annotations.Column;
-import orm.annotations.Entity;
-import orm.annotations.Id;
+import ormFramework.annotations.Column;
+import ormFramework.annotations.Entity;
+import ormFramework.annotations.Id;
 
 import java.time.LocalDate;
 
@@ -12,12 +12,12 @@ public class User {
     @Id()
     private long id;
 
-    @Column(name = "user_name")
+    @Column(name = "user_name", columnDefinition = "VARCHAR(50) NOT NULL")
     private String username;
 
-    @Column(name = "age")
+    @Column(name = "age" ,columnDefinition ="int NOT NULL")
     private int age;
-    @Column(name = "registration_date")
+    @Column(name = "registration_date",columnDefinition ="DATE NOT NULL")
     private LocalDate registration;
 
     public User() {
