@@ -24,10 +24,10 @@ public class User {
 
     }
 
-    public User(String username, int age, LocalDate registration) {
+    public User(String username, int age) {
         this.username = username;
         this.age = age;
-        this.registration = registration;
+        this.registration = LocalDate.now();
     }
 
     public long getId() {

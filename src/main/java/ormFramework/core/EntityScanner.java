@@ -6,9 +6,10 @@ import java.io.File;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class EntityScanner {
-    private List<Class<?>> classes;
+    private final List<Class<?>> classes;
 
     public EntityScanner(Class<?> mainClass) throws URISyntaxException, ClassNotFoundException {
         String path = mainClass.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
@@ -20,7 +21,7 @@ public class EntityScanner {
     }
 
     private void scanEntities(File dir, String packageName) throws ClassNotFoundException {
-        for (File file : dir.listFiles()) {
+        for (File file : Objects.requireNonNull(dir.listFiles())) {
             if (file.isDirectory()) {
                 scanEntities(file, packageName + "." + file.getName());
             } else if (file.getName().endsWith(".class")) {

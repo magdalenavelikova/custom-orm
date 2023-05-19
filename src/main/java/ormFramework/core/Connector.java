@@ -21,7 +21,7 @@ public class Connector {
         connection= DriverManager.getConnection(connectionPath+dbName,properties);
     }
 
-    public static Connection getConnection() throws SQLException {
+    public static Connection getConnection() {
        /* Singleton pattern
 
         private constructor +

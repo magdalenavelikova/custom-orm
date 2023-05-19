@@ -12,7 +12,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.URISyntaxException;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.LocalDate;
 
 /**
  * 1. Клас, нойто ще обиколи всички класове в проекта, за oа намери тези, които са анотирани с @Entity /наша анотация/ - EntityScanner
@@ -32,9 +31,9 @@ public class ApplicationStarter {
         System.out.println("Enter password:");
         String password = reader.readLine();
 
-        System.out.println("Enter DataBase Name:");
-        String dbName = reader.readLine();
-      //  String dbName = "orm_test";
+//        System.out.println("Enter DataBase Name:");
+//        String dbName = reader.readLine();
+        String dbName = "orm_test";
 
         EntityScanner scanner = new EntityScanner(ApplicationStarter.class);
 
@@ -44,11 +43,13 @@ public class ApplicationStarter {
         EntityManagerImpl entityManager = new EntityManagerImpl(connection, scanner);
         entityManager.create();
 
-        User user = new User("Test", 20, LocalDate.now());
-        User user1 = new User("Test1", 5, LocalDate.now());
+        User user = new User("Test", 20);
+        User user1 = new User("Test81", 5);
         entityManager.persist(user);
         entityManager.persist(user1);
-
+user1.setId(1);
+user1.setUsername("Maggie");
+        entityManager.persist(user1);
         User first = entityManager.findFirst(User.class);
         System.out.println(first.getId() + " " + first.getUsername() + " " + first.getAge());
 

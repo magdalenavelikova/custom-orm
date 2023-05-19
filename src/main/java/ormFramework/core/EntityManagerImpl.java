@@ -55,26 +55,54 @@ public class EntityManagerImpl implements EntityManager {
 
 
     @Override
-    public <E> boolean persist(E entity) throws SQLException, IllegalAccessException {
-
+    public <E> boolean persist(E entity) throws SQLException, IllegalAccessException, InvocationTargetException, NoSuchMethodException, InstantiationException {
+        Field idField = getIdField(entity);
+        idField.setAccessible(true);
+        long id = (long) idField.get(entity);
         String tableName = this.getTableName(entity.getClass());
         String fieldList = this.getFieldList(entity);
         String valueList = this.getValueList(entity);
+        String sql = "";
+        if (id == 0) {
+            sql = String.format("INSERT INTO %s (%s) VALUES (%s)", tableName, fieldList, valueList);
+            this.connection.prepareStatement(sql).execute();
+        } else {
+            String where = String.format("id=%s", id);
+            Object o = this.findFirst(entity.getClass(), where);
+            String valueListFromTable = getValueList(o);
+            StringBuilder setValues = new StringBuilder();
+            setValues.append("SET ");
 
-        String sql = String.format("INSERT INTO %s (%s) VALUES (%s)", tableName, fieldList, valueList);
+            if (!valueList.equals(valueListFromTable)) {
+                String[] columnName = fieldList.split(", ");
+                String[] oValues = valueList.split(", ");
+                String[] tableValues = valueListFromTable.split(", ");
+                for (int i = 0; i < tableValues.length; i++) {
+                    if (!oValues[i].equals(tableValues[i])) {
+                        setValues.append(columnName[i] + "="+oValues[i] );
+                        sql = String.format("UPDATE %s %s WHERE id=%d",tableName,setValues,id);
+                        this.connection.prepareStatement(sql).execute();
+                    }
+                }
+             //   setValues.replace(setValues.length()-2,setValues.length()-1,")");
 
-        return this.connection.prepareStatement(sql).execute();
+
+            }
+
+        }
+//todo refactor this
+        return true;
     }
 
 
     @Override
     public <E> Iterable<E> find(Class<E> table) throws SQLException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
 
-
         return find(table, "");
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <E> Iterable<E> find(Class<E> table, String where) throws SQLException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
 
         String tableName = this.getTableName(table);
@@ -137,12 +165,12 @@ public class EntityManagerImpl implements EntityManager {
     private String getColumnName(Field declaredField) {
 
         Column columnAnnotation = declaredField.getAnnotation(Column.class);
-        return  columnAnnotation == null ? declaredField.getName() : columnAnnotation.name();
+        return columnAnnotation == null ? declaredField.getName() : columnAnnotation.name();
 
 
     }
 
-    private <E> E fillData(E entity, Field declaredField, String value) throws  IllegalAccessException {
+    private <E> E fillData(E entity, Field declaredField, String value) throws IllegalAccessException {
         declaredField.setAccessible(true);
 
         if (declaredField.getType() == long.class || declaredField.getType() == Long.class) {
@@ -172,6 +200,17 @@ public class EntityManagerImpl implements EntityManager {
                 .filter(f -> f.getAnnotation(Column.class) != null)
                 .map(f -> f.getAnnotation(Column.class).name())
                 .collect(Collectors.joining(", "));
+
+    }
+
+    private <E> Field getIdField(E entity) {
+        return Arrays.stream(entity
+                        .getClass()
+                        .getDeclaredFields())
+                .filter(f -> f.isAnnotationPresent(Id.class))
+                .findFirst()
+                .orElseThrow(() -> new UnsupportedOperationException("This entity doesn't have id"));
+
 
     }
 
