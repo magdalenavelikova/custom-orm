@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 
 public class EntityManagerImpl implements EntityManager {
     private final Connection connection;
-    private EntityScanner entityScanner;
+    private final EntityScanner entityScanner;
 
     public EntityManagerImpl(Connection connection, EntityScanner entityScanner) {
         this.connection = connection;
@@ -30,7 +30,7 @@ public class EntityManagerImpl implements EntityManager {
     public boolean create() throws SQLException {
         List<Class<?>> classes = entityScanner.getClasses();
         for (Class<?> classInfo : classes) {
-            Entity entityInfo = (Entity) classInfo.getAnnotation(Entity.class);
+            Entity entityInfo = classInfo.getAnnotation(Entity.class);
             String tableName = entityInfo.name();
             String sql = String.format("CREATE TABLE IF NOT EXISTS %s%n(", tableName);
             String pkDefinitions = "";
@@ -83,7 +83,7 @@ public class EntityManagerImpl implements EntityManager {
         if (!resultSet.next()) {
             return null;
         }
-        List<E> result = new ArrayList<E>();
+        List<E> result = new ArrayList<>();
         E entity = createEntity(table, resultSet);
         while (entity != null) {
             result.add(entity);
@@ -137,12 +137,12 @@ public class EntityManagerImpl implements EntityManager {
     private String getColumnName(Field declaredField) {
 
         Column columnAnnotation = declaredField.getAnnotation(Column.class);
-        String fieldName = columnAnnotation == null ? declaredField.getName() : columnAnnotation.name();
+        return  columnAnnotation == null ? declaredField.getName() : columnAnnotation.name();
 
-        return fieldName;
+
     }
 
-    private <E> E fillData(E entity, Field declaredField, String value) throws SQLException, IllegalAccessException {
+    private <E> E fillData(E entity, Field declaredField, String value) throws  IllegalAccessException {
         declaredField.setAccessible(true);
 
         if (declaredField.getType() == long.class || declaredField.getType() == Long.class) {
@@ -168,16 +168,16 @@ public class EntityManagerImpl implements EntityManager {
     }
 
     private <E> String getFieldList(E entity) {
-        String fieldList = Arrays.stream(entity.getClass().getDeclaredFields())
+        return Arrays.stream(entity.getClass().getDeclaredFields())
                 .filter(f -> f.getAnnotation(Column.class) != null)
                 .map(f -> f.getAnnotation(Column.class).name())
                 .collect(Collectors.joining(", "));
-        return fieldList;
+
     }
 
     private <E> String getValueList(E entity) throws IllegalAccessException {
         List<Field> fields = Arrays.stream(entity.getClass().getDeclaredFields())
-                .filter(f -> f.getAnnotation(Column.class) != null).collect(Collectors.toList());
+                .filter(f -> f.getAnnotation(Column.class) != null).toList();
 
         List<String> list = new ArrayList<>();
         for (Field field : fields) {
