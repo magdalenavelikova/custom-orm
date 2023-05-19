@@ -2,7 +2,7 @@ package customOrm;
 
 import customOrm.entities.User;
 import ormFramework.core.Connector;
-import ormFramework.core.EntityManager;
+import ormFramework.core.EntityManagerImpl;
 import ormFramework.core.EntityScanner;
 
 import java.io.BufferedReader;
@@ -38,12 +38,10 @@ public class ApplicationStarter {
 
         EntityScanner scanner = new EntityScanner(ApplicationStarter.class);
 
-        //System.out.println(String.join(",", scanner.getClasses().toString()));
-
         Connector.createConnection("root", password, dbName);
         Connection connection = Connector.getConnection();
 
-        EntityManager entityManager = new EntityManager(connection, scanner);
+        EntityManagerImpl entityManager = new EntityManagerImpl(connection, scanner);
         entityManager.create();
 
         User user = new User("Test", 20, LocalDate.now());
