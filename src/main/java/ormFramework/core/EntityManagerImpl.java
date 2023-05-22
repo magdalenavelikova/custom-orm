@@ -56,9 +56,8 @@ public class EntityManagerImpl implements EntityManager {
 
     @Override
     public <E> boolean persist(E entity) throws SQLException, IllegalAccessException, InvocationTargetException, NoSuchMethodException, InstantiationException {
-        Field idField = getIdField(entity);
-        idField.setAccessible(true);
-        long id = (long) idField.get(entity);
+
+        long id = getId(entity);
         String tableName = this.getTableName(entity.getClass());
         String fieldList = this.getFieldList(entity);
         String valueList = this.getValueList(entity);
@@ -95,13 +94,11 @@ public class EntityManagerImpl implements EntityManager {
 
     @Override
     public <E> boolean delete(E entity) throws SQLException, IllegalAccessException, InvocationTargetException, NoSuchMethodException, InstantiationException {
-        Field idField = getIdField(entity);
-        idField.setAccessible(true);
-        long id = (long) idField.get(entity);
+        long id = getId(entity);
         String tableName = this.getTableName(entity.getClass());
         String sql = "";
 
-            sql = String.format("DELETE FROM %s WHERE id=%s;", tableName, id);
+        sql = String.format("DELETE FROM %s WHERE id=%s;", tableName, id);
 
         return this.connection.prepareStatement(sql).execute();
     }
@@ -222,8 +219,6 @@ public class EntityManagerImpl implements EntityManager {
                 .filter(f -> f.isAnnotationPresent(Id.class))
                 .findFirst()
                 .orElseThrow(() -> new UnsupportedOperationException("This entity doesn't have id"));
-
-
     }
 
     private <E> String getValueList(E entity) throws IllegalAccessException {
@@ -236,5 +231,12 @@ public class EntityManagerImpl implements EntityManager {
             list.add("\"" + field.get(entity).toString() + "\"");
         }
         return String.join(", ", list);
+    }
+
+    private <E> long getId(E entity) throws IllegalAccessException {
+        Field idField = getIdField(entity);
+        idField.setAccessible(true);
+        return (long) idField.get(entity);
+
     }
 }
