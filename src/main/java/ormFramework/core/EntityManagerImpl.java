@@ -65,7 +65,7 @@ public class EntityManagerImpl implements EntityManager {
         String sql = "";
         if (id == 0) {
             sql = String.format("INSERT INTO %s (%s) VALUES (%s)", tableName, fieldList, valueList);
-            this.connection.prepareStatement(sql).execute();
+
         } else {
             String where = String.format("id=%s", id);
             Object o = this.findFirst(entity.getClass(), where);
@@ -79,19 +79,31 @@ public class EntityManagerImpl implements EntityManager {
                 String[] tableValues = valueListFromTable.split(", ");
                 for (int i = 0; i < tableValues.length; i++) {
                     if (!oValues[i].equals(tableValues[i])) {
-                        setValues.append(columnName[i] + "="+oValues[i] );
-                        sql = String.format("UPDATE %s %s WHERE id=%d",tableName,setValues,id);
-                        this.connection.prepareStatement(sql).execute();
+                        setValues.append(columnName[i] + "=" + oValues[i] + ", ");
                     }
                 }
-             //   setValues.replace(setValues.length()-2,setValues.length()-1,")");
-
-
+                setValues.replace(setValues.length() - 2, setValues.length() - 1, "");
+                sql = String.format("UPDATE %s %s WHERE id=%d;", tableName, setValues, id);
             }
-
         }
-//todo refactor this
-        return true;
+
+        if (sql.equals("")) {
+            return false;
+        }
+        return this.connection.prepareStatement(sql).execute();
+    }
+
+    @Override
+    public <E> boolean delete(E entity) throws SQLException, IllegalAccessException, InvocationTargetException, NoSuchMethodException, InstantiationException {
+        Field idField = getIdField(entity);
+        idField.setAccessible(true);
+        long id = (long) idField.get(entity);
+        String tableName = this.getTableName(entity.getClass());
+        String sql = "";
+
+            sql = String.format("DELETE FROM %s WHERE id=%s;", tableName, id);
+
+        return this.connection.prepareStatement(sql).execute();
     }
 
 

@@ -12,6 +12,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.URISyntaxException;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalDate;
 
 /**
  * 1. Клас, нойто ще обиколи всички класове в проекта, за oа намери тези, които са анотирани с @Entity /наша анотация/ - EntityScanner
@@ -31,9 +32,9 @@ public class ApplicationStarter {
         System.out.println("Enter password:");
         String password = reader.readLine();
 
-//        System.out.println("Enter DataBase Name:");
-//        String dbName = reader.readLine();
-        String dbName = "orm_test";
+        System.out.println("Enter DataBase Name:");
+        String dbName = reader.readLine();
+        //     String dbName = "orm_test";
 
         EntityScanner scanner = new EntityScanner(ApplicationStarter.class);
 
@@ -47,22 +48,23 @@ public class ApplicationStarter {
         User user1 = new User("Test81", 5);
         entityManager.persist(user);
         entityManager.persist(user1);
-user1.setId(1);
-user1.setUsername("Maggie");
-        entityManager.persist(user1);
+        User userMaggie = entityManager.findFirst(User.class, "user_name='MaggieV'");
+        userMaggie.setUsername("MaggieV");
+        userMaggie.setAge(47);
+        userMaggie.setRegistration(LocalDate.now());
+        entityManager.persist(userMaggie);
+        entityManager.delete(entityManager.findFirst(User.class, "user_name='Test81'"));
         User first = entityManager.findFirst(User.class);
         System.out.println(first.getId() + " " + first.getUsername() + " " + first.getAge());
 
         User first1 = entityManager.findFirst(User.class, "user_name='Test1'");
         System.out.println(first1.getId() + " " + first1.getUsername() + " " + first1.getAge());
 
-        entityManager.find(User.class, "age<20 AND registration_date>'2022-06-06'")
-                .forEach(
-                        u -> {
-                            if (u != null) {
-                                System.out.println(u);
-                            }
-                        });
+        entityManager.find(User.class, "age<20 AND registration_date>'2022-06-06'").forEach(u -> {
+            if (u != null) {
+                System.out.println(u);
+            }
+        });
 
     }
 }
